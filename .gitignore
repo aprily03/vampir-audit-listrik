@@ -1,0 +1,38 @@
+# OS & editor
+.DS_Store
+Thumbs.db
+.desktop.ini
+.vscode/
+.idea/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+auth.json
+
+# Dependencies & build output
+**/node_modules/
+**/vendor/
+**/dist/
+**/.vite/
+backend/public/build/
+backend/public/hot
+
+# Runtime files
+*.log
+*.sqlite
+*.sqlite3
+
+# PHP tooling caches
+.phpunit.result.cache
+.phpunit.cache/
+.phpactor.json
+
+# Local AI tooling caches
+/.codex/
+/.cursor/
