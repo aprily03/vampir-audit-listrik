@@ -61,6 +61,7 @@ class ExecutiveReportService
             ],
             'notes' => [
                 'Nilai energi, biaya, dan emisi pada laporan ini adalah estimasi dari data audit dan parameter aktif, bukan tagihan atau pembacaan meter PLN.',
+                'Durasi standby dapat berbeda per laboratorium. Nilai jam dan hari pada panel ini adalah default global; estimasi tiap lab memakai durasi efektifnya.',
                 'Tagihan bulanan merupakan data manual tingkat kampus; tidak diatribusikan per laboratorium.',
                 'Emisi hasil estimasi energi dan kolom emisi pada tagihan (bila diisi) adalah dua sumber data yang berbeda.',
             ],

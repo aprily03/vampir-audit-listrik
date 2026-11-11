@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Enums\IncidentStatus;
 use App\Enums\UserRole;
+use App\Http\Controllers\Controller;
 use App\Http\Resources\AuditPcLogResource;
 use App\Http\Resources\UrgentIncidentResource;
 use App\Models\AuditPcLog;
@@ -74,7 +74,7 @@ class DashboardController extends Controller
             'incident_counts' => $incidentCounts,
             'incidents' => UrgentIncidentResource::collection($incidents)->resolve(),
             'recent_audits' => AuditPcLogResource::collection($recentAudits)->resolve(),
-            'data_note' => 'Energi dan emisi adalah estimasi dari data audit. Beban panel adalah input manual/estimasi, bukan telemetri real-time.',
+            'data_note' => 'Energi dan emisi adalah estimasi dari data audit. Durasi standby mengikuti default global dan penyesuaian per lab. Beban panel adalah input manual/estimasi, bukan telemetri real-time.',
         ]);
     }
 
@@ -163,8 +163,7 @@ class DashboardController extends Controller
      */
     private function pendingIncidentCount(array $counts): int
     {
-        return ($counts[IncidentStatus::BARU->value] ?? 0)
-            + ($counts[IncidentStatus::DITINJAU->value] ?? 0)
-            + ($counts[IncidentStatus::DALAM_PENANGANAN->value] ?? 0);
+        return ($counts[IncidentStatus::Baru->value] ?? 0)
+            + ($counts[IncidentStatus::Ditangani->value] ?? 0);
     }
 }

@@ -40,8 +40,7 @@ type Filter = 'ALL' | IncidentStatus
 const statusTabs: { value: Filter; label: string }[] = [
   { value: 'ALL', label: 'Semua' },
   { value: 'BARU', label: 'Baru' },
-  { value: 'DITINJAU', label: 'Ditinjau' },
-  { value: 'DALAM_PENANGANAN', label: 'Dalam Penanganan' },
+  { value: 'DITANGANI', label: 'Ditangani' },
   { value: 'SELESAI', label: 'Selesai' },
 ]
 
@@ -68,7 +67,7 @@ export default function PanelsPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
   const [filter, setFilter] = useState<Filter>('ALL')
-  const [pollSeconds, setPollSeconds] = useState(3)
+  const [pollSeconds, setPollSeconds] = useState(2)
   const [lastPoll, setLastPoll] = useState<string | null>(null)
   const lastSync = useRef<string | null>(null)
 
@@ -97,7 +96,7 @@ export default function PanelsPage() {
     try {
       const response = await api.get<PanelOverview & { parameters: { incident_poll_seconds: number } }>('/panel-limits')
       setOverview(response)
-      setPollSeconds(Math.max(3, response.parameters?.incident_poll_seconds ?? 3))
+      setPollSeconds(Math.max(2, response.parameters?.incident_poll_seconds ?? 2))
       setError('')
     } catch (caught) {
       setError(firstError(caught))
@@ -141,7 +140,7 @@ export default function PanelsPage() {
 
   useEffect(() => {
     if (!overview) return
-    const interval = Math.max(3, pollSeconds) * 1000
+    const interval = Math.max(2, pollSeconds) * 1000
     const timer = window.setInterval(() => {
       void loadIncidents(lastSync.current ?? undefined).catch(() => undefined)
     }, interval)
@@ -149,7 +148,7 @@ export default function PanelsPage() {
   }, [overview, pollSeconds, loadIncidents])
 
   const counts = useMemo(() => {
-    const result: Record<IncidentStatus, number> = { BARU: 0, DITINJAU: 0, DALAM_PENANGANAN: 0, SELESAI: 0 }
+    const result: Record<IncidentStatus, number> = { BARU: 0, DITANGANI: 0, SELESAI: 0 }
     for (const incident of incidents) result[incident.status] += 1
     return result
   }, [incidents])

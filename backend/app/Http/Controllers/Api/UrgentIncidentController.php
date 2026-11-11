@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Enums\IncidentStatus;
+use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreIncidentRequest;
 use App\Http\Requests\UpdateIncidentStatusRequest;
 use App\Http\Resources\UrgentIncidentResource;
@@ -47,7 +47,7 @@ class UrgentIncidentController extends Controller
             'lab_room_id' => $request->integer('lab_room_id'),
             'reported_by' => $request->user()->id,
             'description' => $request->string('description')->trim()->toString(),
-            'status' => IncidentStatus::BARU,
+            'status' => IncidentStatus::Baru,
         ]);
 
         $incident->load(['labRoom', 'reporter', 'statusUpdatedBy']);
@@ -59,13 +59,13 @@ class UrgentIncidentController extends Controller
     {
         $target = IncidentStatus::from($request->string('status')->toString());
         $current = $incident->status;
-        $order = [IncidentStatus::BARU, IncidentStatus::DITINJAU, IncidentStatus::DALAM_PENANGANAN, IncidentStatus::SELESAI];
+        $order = [IncidentStatus::Baru, IncidentStatus::Ditangani, IncidentStatus::Selesai];
         $currentIndex = array_search($current, $order, true);
         $targetIndex = array_search($target, $order, true);
 
         if ($targetIndex !== $currentIndex && $targetIndex !== $currentIndex + 1) {
             throw ValidationException::withMessages([
-                'status' => 'Status insiden harus mengikuti alur: Baru → Ditinjau → Dalam Penanganan → Selesai.',
+                'status' => 'Status insiden harus mengikuti alur: Baru → Ditangani → Selesai.',
             ]);
         }
 

@@ -19,28 +19,28 @@ class IncidentSeeder extends Seeder
             [
                 'lab' => 'Lab 3',
                 'description' => 'AC ruang utama tidak mendingin sejak pukul 09.00; suhu ruang meningkat.',
-                'status' => IncidentStatus::BARU,
+                'status' => IncidentStatus::Baru,
                 'created_at' => now()->subHours(2),
                 'status_note' => null,
             ],
             [
                 'lab' => 'Lab 5',
                 'description' => 'Beban grup stopkontak meja tengah mendekati batas 10 A.',
-                'status' => IncidentStatus::DITINJAU,
+                'status' => IncidentStatus::Ditangani,
                 'created_at' => now()->subHours(6),
-                'status_note' => 'Menunggu pemeriksaan beban per meja.',
+                'status_note' => 'Sedang diperiksa oleh teknisi.',
             ],
             [
                 'lab' => 'Lab 2',
                 'description' => 'Lampu indikator panel berkedip dan tegangan tidak stabil saat semua PC menyala.',
-                'status' => IncidentStatus::DALAM_PENANGANAN,
+                'status' => IncidentStatus::Ditangani,
                 'created_at' => now()->subDay(),
                 'status_note' => 'Teknisi sedang memeriksa koneksi panel.',
             ],
             [
                 'lab' => 'Lab 1',
                 'description' => 'Saklar stopkontak dinding terasa panas saat jam praktikum.',
-                'status' => IncidentStatus::SELESAI,
+                'status' => IncidentStatus::Selesai,
                 'created_at' => now()->subDays(3),
                 'status_note' => 'Saklar sudah diganti dan diuji.',
             ],
@@ -54,12 +54,12 @@ class IncidentSeeder extends Seeder
                 [
                     'reported_by' => $admin->id,
                     'status' => $data['status'],
-                    'status_updated_by' => $data['status'] === IncidentStatus::BARU ? null : $maintenance->id,
-                    'status_updated_at' => $data['status'] === IncidentStatus::BARU ? null : $data['created_at']->copy()->addMinutes(45),
+                    'status_updated_by' => $data['status'] === IncidentStatus::Baru ? null : $maintenance->id,
+                    'status_updated_at' => $data['status'] === IncidentStatus::Baru ? null : $data['created_at']->copy()->addMinutes(45),
                     'status_note' => $data['status_note'],
-                    'resolved_at' => $data['status'] === IncidentStatus::SELESAI ? $data['created_at']->copy()->addHours(4) : null,
+                    'resolved_at' => $data['status'] === IncidentStatus::Selesai ? $data['created_at']->copy()->addHours(4) : null,
                     'created_at' => $data['created_at'],
-                    'updated_at' => $data['status'] === IncidentStatus::BARU ? $data['created_at'] : $data['created_at']->copy()->addMinutes(45),
+                    'updated_at' => $data['status'] === IncidentStatus::Baru ? $data['created_at'] : $data['created_at']->copy()->addMinutes(45),
                 ]
             );
         }

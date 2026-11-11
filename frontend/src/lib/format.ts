@@ -103,14 +103,12 @@ export function panelStatusTone(status: string): 'success' | 'warning' | 'danger
 
 export function incidentStatusTone(status: string): 'info' | 'warning' | 'accent' | 'success' {
   if (status === 'BARU') return 'info'
-  if (status === 'DITINJAU') return 'warning'
-  if (status === 'DALAM_PENANGANAN') return 'accent'
+  if (status === 'DITANGANI') return 'accent'
   return 'success'
 }
 
 export const nextIncidentStatus: Record<string, { value: string; label: string; action: string } | null> = {
-  BARU: { value: 'DITINJAU', label: 'Ditinjau', action: 'Tandai ditinjau' },
-  DITINJAU: { value: 'DALAM_PENANGANAN', label: 'Dalam Penanganan', action: 'Mulai penanganan' },
-  DALAM_PENANGANAN: { value: 'SELESAI', label: 'Selesai', action: 'Tandai selesai' },
+  BARU: { value: 'DITANGANI', label: 'Ditangani', action: 'Tandai ditangani' },
+  DITANGANI: { value: 'SELESAI', label: 'Selesai', action: 'Tandai selesai' },
   SELESAI: null,
 }

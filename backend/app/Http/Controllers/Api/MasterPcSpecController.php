@@ -29,6 +29,7 @@ class MasterPcSpecController extends Controller
     {
         $data = $request->validated();
         $data['storage_type'] = strtoupper($data['storage_type']);
+        $data['cpu'] = isset($data['cpu']) && trim((string) $data['cpu']) !== '' ? trim((string) $data['cpu']) : null;
         $data['is_active'] = $data['is_active'] ?? true;
 
         $spec = MasterPcSpec::query()->create($data);
@@ -42,6 +43,10 @@ class MasterPcSpecController extends Controller
 
         if (isset($data['storage_type'])) {
             $data['storage_type'] = strtoupper($data['storage_type']);
+        }
+
+        if (array_key_exists('cpu', $data)) {
+            $data['cpu'] = trim((string) $data['cpu']) !== '' ? trim((string) $data['cpu']) : null;
         }
 
         $masterPcSpec->update($data);

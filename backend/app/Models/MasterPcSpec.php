@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['ram_gb', 'storage_gb', 'storage_type', 'standby_watt', 'is_active'])]
+#[Fillable(['ram_gb', 'storage_gb', 'storage_type', 'cpu', 'standby_watt', 'is_active'])]
 class MasterPcSpec extends Model
 {
     use HasFactory;
@@ -26,7 +26,10 @@ class MasterPcSpec extends Model
     protected function label(): Attribute
     {
         return Attribute::get(
-            fn (): string => "{$this->ram_gb} GB RAM · {$this->storage_gb} GB {$this->storage_type}"
+            fn (): string => trim(
+                "{$this->ram_gb} GB RAM · {$this->storage_gb} GB {$this->storage_type}"
+                .($this->cpu ? " · {$this->cpu}" : '')
+            )
         );
     }
 

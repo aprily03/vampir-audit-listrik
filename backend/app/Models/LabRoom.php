@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'location', 'capacity', 'is_active'])]
+#[Fillable(['name', 'location', 'capacity', 'standby_hours_per_day', 'standby_days_per_month', 'is_active'])]
 class LabRoom extends Model
 {
     use HasFactory;
@@ -16,6 +16,8 @@ class LabRoom extends Model
     {
         return [
             'capacity' => 'integer',
+            'standby_hours_per_day' => 'decimal:2',
+            'standby_days_per_month' => 'decimal:2',
             'is_active' => 'boolean',
         ];
     }

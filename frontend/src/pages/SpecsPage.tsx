@@ -31,6 +31,7 @@ interface SpecForm {
   ram_gb: string
   storage_gb: string
   storage_type: string
+  cpu: string
   standby_watt: string
   is_active: boolean
 }
@@ -39,6 +40,7 @@ const emptyForm: SpecForm = {
   ram_gb: '',
   storage_gb: '',
   storage_type: 'SSD',
+  cpu: '',
   standby_watt: '',
   is_active: true,
 }
@@ -48,7 +50,8 @@ const storageTypes = ['SSD', 'HDD', 'NVME']
 function specLabel(form: SpecForm): string {
   const ram = form.ram_gb || '—'
   const storage = form.storage_gb || '—'
-  return `${ram} GB RAM · ${storage} GB ${form.storage_type}`
+  const cpu = form.cpu.trim()
+  return `${ram} GB RAM · ${storage} GB ${form.storage_type}${cpu ? ` · ${cpu}` : ''}`
 }
 
 export default function SpecsPage() {
@@ -106,6 +109,7 @@ export default function SpecsPage() {
       return (
         spec.label.toLowerCase().includes(query) ||
         spec.storage_type.toLowerCase().includes(query) ||
+        (spec.cpu ?? '').toLowerCase().includes(query) ||
         String(spec.ram_gb).includes(query) ||
         String(spec.storage_gb).includes(query)
       )
@@ -125,6 +129,7 @@ export default function SpecsPage() {
       ram_gb: String(spec.ram_gb),
       storage_gb: String(spec.storage_gb),
       storage_type: spec.storage_type,
+      cpu: spec.cpu ?? '',
       standby_watt: String(spec.standby_watt),
       is_active: spec.is_active,
     })
@@ -141,6 +146,7 @@ export default function SpecsPage() {
         ram_gb: Number(form.ram_gb),
         storage_gb: Number(form.storage_gb),
         storage_type: form.storage_type,
+        cpu: form.cpu.trim() || null,
         standby_watt: Number(form.standby_watt),
         is_active: form.is_active,
       }
@@ -203,7 +209,7 @@ export default function SpecsPage() {
       <PageHead
         eyebrow="Administrasi data"
         title="Master perangkat"
-        description="Katalog kombinasi RAM dan penyimpanan beserta asumsi watt standby yang dipakai saat audit."
+        description="Katalog kombinasi RAM, penyimpanan, dan CPU opsional beserta asumsi watt standby yang dipakai saat audit."
         actions={
           <>
             <button className="btn btn-secondary" onClick={() => void load()} disabled={refreshing}>
@@ -221,8 +227,9 @@ export default function SpecsPage() {
       <div className="info-banner">
         <Monitor size={17} />
         <div>
-          <strong>Nilai watt standby adalah asumsi per unit.</strong> Setiap audit menyimpan salinan watt saat dicatat,
-          sehingga perubahan master tidak mengubah hasil audit historis. Nilai ini bukan daya aktif saat PC digunakan.
+          <strong>Nilai watt standby adalah asumsi per unit.</strong> CPU bersifat opsional; isi bila ingin membedakan
+          varian perangkat. Setiap audit menyimpan salinan spesifikasi saat dicatat, sehingga perubahan master tidak
+          mengubah hasil audit historis.
         </div>
         <Badge tone="info">Snapshot audit</Badge>
       </div>
@@ -331,6 +338,7 @@ export default function SpecsPage() {
                   <th>Spesifikasi</th>
                   <th>RAM</th>
                   <th>Penyimpanan</th>
+                  <th>CPU</th>
                   <th className="right">Standby</th>
                   <th>Status</th>
                   <th aria-label="Aksi" />
@@ -344,6 +352,7 @@ export default function SpecsPage() {
                     <td>
                       {number(spec.storage_gb)} GB <span className="muted">· {spec.storage_type}</span>
                     </td>
+                    <td>{spec.cpu ? spec.cpu : <span className="muted">Opsional</span>}</td>
                     <td className="right cell-strong">{number(spec.standby_watt, 2)} W</td>
                     <td>
                       <Badge tone={spec.is_active ? 'success' : 'neutral'} dot>
@@ -453,20 +462,36 @@ export default function SpecsPage() {
                 ))}
               </select>
             </FormField>
-            <FormField label="Daya standby (W)" htmlFor="specWatt" hint="Asumsi per unit, misalnya 5 W.">
+            <FormField
+              label="CPU (opsional)"
+              htmlFor="specCpu"
+              hint="Contoh: Intel Core i5-12400. Boleh dikosongkan."
+            >
               <input
-                id="specWatt"
+                id="specCpu"
                 className="input"
-                type="number"
-                min="0.01"
-                max="10000"
-                step="0.01"
-                value={form.standby_watt}
-                onChange={(event) => setForm({ ...form, standby_watt: event.target.value })}
-                required
+                type="text"
+                maxLength={100}
+                value={form.cpu}
+                onChange={(event) => setForm({ ...form, cpu: event.target.value })}
+                placeholder="Model atau seri CPU…"
               />
             </FormField>
           </div>
+
+          <FormField label="Daya standby (W)" htmlFor="specWatt" hint="Asumsi per unit, misalnya 5 W.">
+            <input
+              id="specWatt"
+              className="input"
+              type="number"
+              min="0.01"
+              max="10000"
+              step="0.01"
+              value={form.standby_watt}
+              onChange={(event) => setForm({ ...form, standby_watt: event.target.value })}
+              required
+            />
+          </FormField>
 
           <div className="calc-preview">
             Label katalog: <strong>{specLabel(form)}</strong>. Watt standby yang dipakai:{' '}

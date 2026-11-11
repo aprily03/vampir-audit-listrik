@@ -14,6 +14,8 @@ class LabRoomResource extends JsonResource
             'name' => $this->name,
             'location' => $this->location,
             'capacity' => $this->capacity,
+            'standby_hours_per_day' => $this->standby_hours_per_day !== null ? (float) $this->standby_hours_per_day : null,
+            'standby_days_per_month' => $this->standby_days_per_month !== null ? (float) $this->standby_days_per_month : null,
             'is_active' => $this->is_active,
             'audited_count' => $this->whenCounted('audits'),
             'created_at' => $this->created_at?->toIso8601String(),

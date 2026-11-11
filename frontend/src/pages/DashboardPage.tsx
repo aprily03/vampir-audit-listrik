@@ -13,7 +13,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { api, firstError } from '../lib/api'
-import { compactRupiah, dateTime, number, panelStatusTone, relativeTime, rupiah } from '../lib/format'
+import { compactRupiah, dateTime, incidentStatusTone, number, panelStatusTone, relativeTime, rupiah } from '../lib/format'
 import type { AdminDashboard } from '../types'
 import { Badge, ErrorState, PageHead, PageLoader, ProgressBar, StatCard } from '../components/ui'
 
@@ -67,12 +67,47 @@ export default function DashboardPage() {
         }
       />
 
+      <section className="quick-actions" aria-label="Aksi cepat">
+        <Link className="quick-action" to="/audit">
+          <span className="quick-action-icon"><ClipboardList size={20} /></span>
+          <span className="quick-action-copy">
+            <strong>Audit PC</strong>
+            <small>Catat unit baru</small>
+          </span>
+          <ArrowRight size={17} className="quick-action-arrow" />
+        </Link>
+        <Link className="quick-action" to="/panels">
+          <span className="quick-action-icon"><Gauge size={20} /></span>
+          <span className="quick-action-copy">
+            <strong>Panel &amp; insiden</strong>
+            <small>Cek beban dan laporan</small>
+          </span>
+          <ArrowRight size={17} className="quick-action-arrow" />
+        </Link>
+        <Link className="quick-action" to="/specs">
+          <span className="quick-action-icon"><Monitor size={20} /></span>
+          <span className="quick-action-copy">
+            <strong>Master perangkat</strong>
+            <small>Kelola RAM, SSD, CPU</small>
+          </span>
+          <ArrowRight size={17} className="quick-action-arrow" />
+        </Link>
+        <Link className="quick-action" to="/executive">
+          <span className="quick-action-icon"><Wallet size={20} /></span>
+          <span className="quick-action-copy">
+            <strong>Ringkasan eksekutif</strong>
+            <small>Tagihan dan laporan PDF</small>
+          </span>
+          <ArrowRight size={17} className="quick-action-arrow" />
+        </Link>
+      </section>
+
       <div className="info-banner">
         <Zap size={17} />
         <div>
-          <strong>Angka energi dan biaya adalah estimasi.</strong> Dihitung dari watt standby hasil audit ×{' '}
-          {number(parameters.standby_hours_per_day, 0)} jam × {number(parameters.standby_days_per_month, 0)} hari,
-          bukan pembacaan meter PLN. Diperbarui {dateTime(totals ? data.generated_at : null)}.
+          <strong>Angka energi dan biaya adalah estimasi.</strong> Dihitung dari watt standby hasil audit dan durasi
+          standby global, dengan penyesuaian per lab bila diisi Admin. Bukan pembacaan meter PLN. Diperbarui{' '}
+          {dateTime(data.generated_at)}.
         </div>
         <Badge tone="info">Estimasi</Badge>
       </div>
@@ -276,19 +311,7 @@ export default function DashboardPage() {
                 {data.incidents.slice(0, 5).map((incident) => (
                   <div className="incident-mini" key={incident.id}>
                     <div className="incident-mini-top">
-                      <Badge
-                        tone={
-                          incident.status === 'BARU'
-                            ? 'info'
-                            : incident.status === 'DITINJAU'
-                              ? 'warning'
-                              : incident.status === 'DALAM_PENANGANAN'
-                                ? 'accent'
-                                : 'success'
-                        }
-                      >
-                        {incident.status_label}
-                      </Badge>
+                      <Badge tone={incidentStatusTone(incident.status)}>{incident.status_label}</Badge>
                       <span>{relativeTime(incident.created_at)}</span>
                     </div>
                     <strong>{incident.lab_name}</strong>

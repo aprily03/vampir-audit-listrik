@@ -2,7 +2,7 @@ export type Role = 'ADMIN' | 'AUDITOR' | 'MAINTENANCE' | 'PIMPINAN'
 
 export type PanelGroup = 'SOCKET' | 'AC'
 export type PanelLevel = 'NORMAL' | 'WARNING' | 'OVER' | 'UNAVAILABLE'
-export type IncidentStatus = 'BARU' | 'DITINJAU' | 'DALAM_PENANGANAN' | 'SELESAI'
+export type IncidentStatus = 'BARU' | 'DITANGANI' | 'SELESAI'
 
 export interface AuthUser {
   id: number
@@ -55,6 +55,8 @@ export interface LabRoom {
   name: string
   location: string | null
   capacity: number
+  standby_hours_per_day: number | null
+  standby_days_per_month: number | null
   is_active: boolean
   audited_count?: number
 }
@@ -76,6 +78,7 @@ export interface Spec {
   ram_gb: number
   storage_gb: number
   storage_type: string
+  cpu: string | null
   label: string
   standby_watt: number
   is_active: boolean
@@ -85,6 +88,7 @@ export interface AuditSpec {
   ram_gb: number
   storage_gb: number
   storage_type: string
+  cpu: string | null
   standby_watt: number
   label: string
 }

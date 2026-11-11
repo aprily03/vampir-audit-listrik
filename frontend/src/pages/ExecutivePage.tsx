@@ -329,11 +329,11 @@ export default function ExecutivePage() {
               <dd>{number(data.parameters.emission_factor_kg_per_kwh, 2)} kg CO₂e / kWh</dd>
             </div>
             <div>
-              <dt>Jam standby</dt>
+              <dt>Jam standby (default)</dt>
               <dd>{number(data.parameters.standby_hours_per_day, 0)} jam / hari</dd>
             </div>
             <div>
-              <dt>Hari per bulan</dt>
+              <dt>Hari/bulan (default)</dt>
               <dd>{number(data.parameters.standby_days_per_month, 0)} hari</dd>
             </div>
             <div>

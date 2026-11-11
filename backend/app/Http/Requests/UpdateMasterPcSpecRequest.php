@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\MasterPcSpec;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -19,6 +20,7 @@ class UpdateMasterPcSpecRequest extends FormRequest
             'ram_gb' => ['sometimes', 'required', 'integer', 'min:1', 'max:1024'],
             'storage_gb' => ['sometimes', 'required', 'integer', 'min:1', 'max:100000'],
             'storage_type' => ['sometimes', 'required', 'string', Rule::in(['SSD', 'HDD', 'NVME'])],
+            'cpu' => ['sometimes', 'nullable', 'string', 'max:100'],
             'standby_watt' => ['sometimes', 'required', 'numeric', 'gt:0', 'max:10000'],
             'is_active' => ['sometimes', 'boolean'],
         ];
@@ -37,7 +39,7 @@ class UpdateMasterPcSpecRequest extends FormRequest
                 $storage = $this->integer('storage_gb', $spec->storage_gb);
                 $type = strtoupper($this->string('storage_type', $spec->storage_type)->toString());
 
-                $exists = \App\Models\MasterPcSpec::query()
+                $exists = MasterPcSpec::query()
                     ->whereKeyNot($spec->getKey())
                     ->where('ram_gb', $ram)
                     ->where('storage_gb', $storage)

@@ -19,8 +19,12 @@ class AuditPcLogResource extends JsonResource
                 'ram_gb' => $this->ram_gb_snapshot,
                 'storage_gb' => $this->storage_gb_snapshot,
                 'storage_type' => $this->storage_type_snapshot,
+                'cpu' => $this->cpu_snapshot,
                 'standby_watt' => (float) $this->standby_watt_snapshot,
-                'label' => "{$this->ram_gb_snapshot} GB RAM · {$this->storage_gb_snapshot} GB {$this->storage_type_snapshot}",
+                'label' => trim(
+                    "{$this->ram_gb_snapshot} GB RAM · {$this->storage_gb_snapshot} GB {$this->storage_type_snapshot}"
+                    .($this->cpu_snapshot ? " · {$this->cpu_snapshot}" : '')
+                ),
             ],
             'is_faulty' => $this->is_faulty,
             'fault_note' => $this->fault_note,

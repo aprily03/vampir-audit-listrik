@@ -21,25 +21,26 @@ import type { Role } from '../types'
 interface NavItem {
   to: string
   label: string
+  short: string
   icon: typeof LayoutDashboard
 }
 
 const mainNav: Record<Role, NavItem[]> = {
   ADMIN: [
-    { to: '/dashboard', label: 'Ringkasan lab', icon: LayoutDashboard },
-    { to: '/audit', label: 'Audit perangkat', icon: ClipboardList },
-    { to: '/panels', label: 'Panel & insiden', icon: Gauge },
-    { to: '/executive', label: 'Ringkasan eksekutif', icon: BarChart3 },
+    { to: '/dashboard', label: 'Ringkasan lab', short: 'Dasbor', icon: LayoutDashboard },
+    { to: '/audit', label: 'Audit perangkat', short: 'Audit', icon: ClipboardList },
+    { to: '/panels', label: 'Panel & insiden', short: 'Panel', icon: Gauge },
+    { to: '/executive', label: 'Ringkasan eksekutif', short: 'Eksekutif', icon: BarChart3 },
   ],
-  AUDITOR: [{ to: '/audit', label: 'Audit perangkat', icon: ClipboardList }],
-  MAINTENANCE: [{ to: '/panels', label: 'Panel & insiden', icon: Gauge }],
-  PIMPINAN: [{ to: '/executive', label: 'Ringkasan eksekutif', icon: BarChart3 }],
+  AUDITOR: [{ to: '/audit', label: 'Audit perangkat', short: 'Audit', icon: ClipboardList }],
+  MAINTENANCE: [{ to: '/panels', label: 'Panel & insiden', short: 'Panel', icon: Gauge }],
+  PIMPINAN: [{ to: '/executive', label: 'Ringkasan eksekutif', short: 'Eksekutif', icon: BarChart3 }],
 }
 
 const adminNav: NavItem[] = [
-  { to: '/specs', label: 'Master perangkat', icon: Monitor },
-  { to: '/users', label: 'Pengguna & peran', icon: Users },
-  { to: '/settings', label: 'Pengaturan', icon: Settings },
+  { to: '/specs', label: 'Master perangkat', short: 'Master', icon: Monitor },
+  { to: '/users', label: 'Pengguna & peran', short: 'Pengguna', icon: Users },
+  { to: '/settings', label: 'Pengaturan', short: 'Setelan', icon: Settings },
 ]
 
 const pageTitles: Record<string, { title: string; eyebrow: string }> = {
@@ -165,6 +166,32 @@ export default function Layout() {
           <Outlet />
         </div>
       </main>
+
+      <nav className="mobile-nav" aria-label="Navigasi utama">
+        {nav.map((item) => {
+          const Icon = item.icon
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) => `mobile-nav-link ${isActive ? 'active' : ''}`}
+              onClick={() => setMenuOpen(false)}
+            >
+              <Icon size={20} strokeWidth={1.8} />
+              <span>{item.short}</span>
+            </NavLink>
+          )
+        })}
+        <button
+          type="button"
+          className="mobile-nav-link mobile-nav-menu"
+          onClick={() => setMenuOpen(true)}
+          aria-label="Buka menu lengkap"
+        >
+          <Menu size={20} strokeWidth={1.8} />
+          <span>Menu</span>
+        </button>
+      </nav>
     </div>
   )
 }

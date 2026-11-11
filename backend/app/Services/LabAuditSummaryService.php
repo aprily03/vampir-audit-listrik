@@ -28,7 +28,17 @@ class LabAuditSummaryService
                 $aggregate = $aggregates->get($lab->id);
                 $auditedCount = (int) ($aggregate->audited_count ?? 0);
                 $totalWatt = (float) ($aggregate->total_watt ?? 0);
-                $estimate = $this->energy->monthlyEstimate($totalWatt);
+                $parameters = $this->energy->parameters();
+
+                if ($lab->standby_hours_per_day !== null) {
+                    $parameters['standby_hours_per_day'] = (float) $lab->standby_hours_per_day;
+                }
+
+                if ($lab->standby_days_per_month !== null) {
+                    $parameters['standby_days_per_month'] = (float) $lab->standby_days_per_month;
+                }
+
+                $estimate = $this->energy->monthlyEstimate($totalWatt, $parameters);
 
                 return [
                     'id' => $lab->id,

@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'ram_gb_snapshot',
     'storage_gb_snapshot',
     'storage_type_snapshot',
+    'cpu_snapshot',
     'standby_watt_snapshot',
     'is_faulty',
     'fault_note',

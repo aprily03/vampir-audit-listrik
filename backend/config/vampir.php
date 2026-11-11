@@ -12,7 +12,7 @@ return [
         'tariff_per_kwh' => 1444.70,
         'emission_factor_kg_per_kwh' => 0.78,
         'default_warning_percent' => 80,
-        'incident_poll_seconds' => 3,
+        'incident_poll_seconds' => 2,
         'active_pc_watt' => 150,
     ],
 

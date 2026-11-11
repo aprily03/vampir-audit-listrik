@@ -14,6 +14,7 @@ class MasterPcSpecResource extends JsonResource
             'ram_gb' => $this->ram_gb,
             'storage_gb' => $this->storage_gb,
             'storage_type' => $this->storage_type,
+            'cpu' => $this->cpu,
             'label' => $this->label,
             'standby_watt' => (float) $this->standby_watt,
             'is_active' => $this->is_active,

@@ -359,7 +359,7 @@ export default function AuditPage() {
             <FormField
               label="Spesifikasi perangkat"
               htmlFor="pcSpec"
-              hint={selectedSpec ? `Watt standby: ${number(selectedSpec.standby_watt, 2)} W` : 'Pilih kombinasi RAM dan penyimpanan.'}
+              hint={selectedSpec ? `Watt standby: ${number(selectedSpec.standby_watt, 2)} W` : 'Pilih kombinasi RAM, penyimpanan, dan CPU.'}
             >
               <select
                 id="pcSpec"

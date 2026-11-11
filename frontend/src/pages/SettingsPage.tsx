@@ -18,9 +18,14 @@ import { useToast } from '../components/ToastProvider'
 import { Badge, ErrorState, FormField, PageHead, PageLoader } from '../components/ui'
 import { api, firstError } from '../lib/api'
 import { dateTime, number, rupiah } from '../lib/format'
-import type { Parameters, SettingEntry, SettingHistoryEntry, SettingsResponse } from '../types'
+import type { LabRoom, Parameters, SettingEntry, SettingHistoryEntry, SettingsResponse } from '../types'
 
 type SettingsForm = Record<keyof Parameters, string>
+
+interface LabStandbyForm {
+  standby_hours_per_day: string
+  standby_days_per_month: string
+}
 
 const parameterLabels: Record<keyof Parameters, string> = {
   standby_hours_per_day: 'Jam standby per hari',
@@ -49,6 +54,13 @@ function numeric(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+function toLabStandbyForm(lab: LabRoom): LabStandbyForm {
+  return {
+    standby_hours_per_day: lab.standby_hours_per_day !== null ? String(lab.standby_hours_per_day) : '',
+    standby_days_per_month: lab.standby_days_per_month !== null ? String(lab.standby_days_per_month) : '',
+  }
+}
+
 export default function SettingsPage() {
   const toast = useToast()
 
@@ -57,6 +69,10 @@ export default function SettingsPage() {
   const [initialForm, setInitialForm] = useState<SettingsForm | null>(null)
   const [history, setHistory] = useState<SettingHistoryEntry[]>([])
   const [historyError, setHistoryError] = useState('')
+  const [labs, setLabs] = useState<LabRoom[]>([])
+  const [labForms, setLabForms] = useState<Record<number, LabStandbyForm>>({})
+  const [savingLabId, setSavingLabId] = useState<number | null>(null)
+  const [labError, setLabError] = useState('')
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -66,20 +82,24 @@ export default function SettingsPage() {
   const load = useCallback(async (silent = false) => {
     if (!silent) setRefreshing(true)
     try {
-      const [response, historyResponse] = await Promise.all([
+      const [response, historyResponse, labsResponse] = await Promise.all([
         api.get<SettingsResponse>('/settings'),
         api.get<{ data: SettingHistoryEntry[] }>('/settings/history').catch((caught: unknown) => {
           setHistoryError(firstError(caught))
           return { data: [] as SettingHistoryEntry[] }
         }),
+        api.get<{ data: LabRoom[] }>('/labs'),
       ])
       const next = toForm(response.parameters)
       setEntries(response.data)
       setForm(next)
       setInitialForm(next)
       setHistory(historyResponse.data)
+      setLabs(labsResponse.data)
+      setLabForms(Object.fromEntries(labsResponse.data.map((lab) => [lab.id, toLabStandbyForm(lab)])))
       setError('')
       setFormError('')
+      setLabError('')
     } catch (caught) {
       setError(firstError(caught))
     } finally {
@@ -143,6 +163,48 @@ export default function SettingsPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  function updateLabField(labId: number, key: keyof LabStandbyForm, value: string) {
+    setLabForms((current) => ({
+      ...current,
+      [labId]: {
+        ...(current[labId] ?? { standby_hours_per_day: '', standby_days_per_month: '' }),
+        [key]: value,
+      },
+    }))
+  }
+
+  async function persistLabStandby(lab: LabRoom, values: LabStandbyForm) {
+    setSavingLabId(lab.id)
+    setLabError('')
+    try {
+      const response = await api.patch<{ data: LabRoom }>(`/labs/${lab.id}`, {
+        standby_hours_per_day:
+          values.standby_hours_per_day.trim() === '' ? null : numeric(values.standby_hours_per_day),
+        standby_days_per_month:
+          values.standby_days_per_month.trim() === '' ? null : numeric(values.standby_days_per_month),
+      })
+      setLabs((current) => current.map((item) => (item.id === lab.id ? response.data : item)))
+      setLabForms((current) => ({ ...current, [lab.id]: toLabStandbyForm(response.data) }))
+      toast.success(
+        response.data.standby_hours_per_day === null && response.data.standby_days_per_month === null
+          ? `${lab.name} kembali mengikuti default global.`
+          : `Durasi standby ${lab.name} diperbarui.`,
+      )
+    } catch (caught) {
+      setLabError(firstError(caught))
+    } finally {
+      setSavingLabId(null)
+    }
+  }
+
+  function handleSaveLab(lab: LabRoom) {
+    void persistLabStandby(lab, labForms[lab.id] ?? toLabStandbyForm(lab))
+  }
+
+  function handleUseGlobalDefault(lab: LabRoom) {
+    void persistLabStandby(lab, { standby_hours_per_day: '', standby_days_per_month: '' })
   }
 
   if (loading) return <PageLoader label="Memuat parameter sistem…" />
@@ -330,14 +392,14 @@ export default function SettingsPage() {
               <FormField
                 label="Interval polling insiden"
                 htmlFor="pollSeconds"
-                hint="Rentang 3–60 detik. Semakin kecil, semakin sering feed diperbarui."
+                hint="Rentang 2–60 detik. Polling 2 detik memenuhi target notifikasi < 3 detik."
               >
                 <div className="unit-input">
                   <input
                     id="pollSeconds"
                     className="input"
                     type="number"
-                    min="3"
+                    min="2"
                     max="60"
                     step="1"
                     value={form.incident_poll_seconds}
@@ -373,8 +435,8 @@ export default function SettingsPage() {
             <div className="settings-hint">
               <Timer size={15} />
               <span>
-                Perubahan interval polling berlaku setelah halaman panel dimuat ulang oleh pengguna. Jeda minimal 3
-                detik untuk menjaga beban server.
+                Perubahan interval polling berlaku setelah halaman panel dimuat ulang oleh pengguna. Jeda minimal 2
+                detik untuk menjaga beban server dan memenuhi target notifikasi di bawah 3 detik.
               </span>
             </div>
           </section>
@@ -463,6 +525,100 @@ export default function SettingsPage() {
           </section>
         </aside>
       </form>
+
+      <section className="card lab-standby-card">
+        <div className="card-head">
+          <div>
+            <h2 className="card-title">Durasi standby per laboratorium</h2>
+            <p className="card-sub">
+              Default global saat ini {number(numeric(form.standby_hours_per_day), 2)} jam/hari dan{' '}
+              {number(numeric(form.standby_days_per_month), 2)} hari/bulan. Isi kolom lab hanya bila jadwal pemakaiannya
+              berbeda; kosongkan untuk mengikuti default.
+            </p>
+          </div>
+          <Badge tone="neutral">{labs.length} lab</Badge>
+        </div>
+
+        {labError && <div className="inline-error">{labError}</div>}
+
+        <div className="lab-standby-grid">
+          {labs.map((lab) => {
+            const values = labForms[lab.id] ?? toLabStandbyForm(lab)
+            const usingDefault = lab.standby_hours_per_day === null && lab.standby_days_per_month === null
+            const savingThisLab = savingLabId === lab.id
+
+            return (
+              <article className={`lab-standby-item ${usingDefault ? 'using-default' : ''}`} key={lab.id}>
+                <div className="lab-standby-head">
+                  <div>
+                    <strong>{lab.name}</strong>
+                    <span>
+                      {lab.location || 'Lokasi belum diisi'} · {number(lab.capacity)} PC
+                    </span>
+                  </div>
+                  <Badge tone={usingDefault ? 'neutral' : 'accent'}>
+                    {usingDefault ? 'Default global' : 'Khusus lab'}
+                  </Badge>
+                </div>
+
+                <div className="lab-standby-fields">
+                  <label className="lab-standby-field">
+                    <span>Jam/hari</span>
+                    <input
+                      className="input input-sm"
+                      type="number"
+                      min="0"
+                      max="24"
+                      step="0.5"
+                      value={values.standby_hours_per_day}
+                      placeholder={number(numeric(form.standby_hours_per_day), 2)}
+                      onChange={(event) => updateLabField(lab.id, 'standby_hours_per_day', event.target.value)}
+                    />
+                  </label>
+                  <label className="lab-standby-field">
+                    <span>Hari/bulan</span>
+                    <input
+                      className="input input-sm"
+                      type="number"
+                      min="1"
+                      max="31"
+                      step="0.5"
+                      value={values.standby_days_per_month}
+                      placeholder={number(numeric(form.standby_days_per_month), 2)}
+                      onChange={(event) => updateLabField(lab.id, 'standby_days_per_month', event.target.value)}
+                    />
+                  </label>
+                </div>
+
+                <div className="lab-standby-actions">
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => handleUseGlobalDefault(lab)}
+                    disabled={usingDefault || savingThisLab}
+                  >
+                    Gunakan default
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => handleSaveLab(lab)}
+                    disabled={savingThisLab}
+                  >
+                    {savingThisLab ? <LoaderCircle size={14} className="spin" /> : <Save size={14} />}
+                    Simpan
+                  </button>
+                </div>
+              </article>
+            )
+          })}
+        </div>
+
+        <div className="data-note">
+          Nilai per lab hanya menimpa durasi standby. Tarif listrik dan faktor emisi tetap memakai parameter global.
+          Perhitungan energi di dasbor dan laporan langsung memakai durasi efektif tiap lab.
+        </div>
+      </section>
 
       <section className="card">
         <div className="card-head">

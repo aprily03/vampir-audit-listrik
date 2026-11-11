@@ -19,7 +19,7 @@ class UpdateSettingsRequest extends FormRequest
             'tariff_per_kwh' => ['sometimes', 'required', 'numeric', 'gt:0', 'max:1000000'],
             'emission_factor_kg_per_kwh' => ['sometimes', 'required', 'numeric', 'min:0', 'max:100'],
             'default_warning_percent' => ['sometimes', 'required', 'integer', 'min:1', 'max:100'],
-            'incident_poll_seconds' => ['sometimes', 'required', 'integer', 'min:3', 'max:60'],
+            'incident_poll_seconds' => ['sometimes', 'required', 'integer', 'min:2', 'max:60'],
             'active_pc_watt' => ['sometimes', 'required', 'numeric', 'gt:0', 'max:10000'],
         ];
     }

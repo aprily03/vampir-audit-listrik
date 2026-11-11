@@ -68,6 +68,7 @@ class AuditPcLogController extends Controller
             'ram_gb_snapshot' => $spec->ram_gb,
             'storage_gb_snapshot' => $spec->storage_gb,
             'storage_type_snapshot' => $spec->storage_type,
+            'cpu_snapshot' => $spec->cpu,
             'standby_watt_snapshot' => $spec->standby_watt,
             'is_faulty' => (bool) ($data['is_faulty'] ?? false),
             'fault_note' => $data['fault_note'] ?? null,
@@ -94,6 +95,7 @@ class AuditPcLogController extends Controller
             $data['ram_gb_snapshot'] = $spec->ram_gb;
             $data['storage_gb_snapshot'] = $spec->storage_gb;
             $data['storage_type_snapshot'] = $spec->storage_type;
+            $data['cpu_snapshot'] = $spec->cpu;
             $data['standby_watt_snapshot'] = $spec->standby_watt;
         }
 
