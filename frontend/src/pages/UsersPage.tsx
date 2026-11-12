@@ -196,9 +196,9 @@ export default function UsersPage() {
   return (
     <>
       <PageHead
-        eyebrow="Administrasi akses"
-        title="Pengguna & peran"
-        description="Kelola akun staf, tentukan peran akses, dan nonaktifkan akun yang tidak lagi bertugas."
+        eyebrow="Web Screen 3: Admin Master Data & RBAC Management (UC-02)"
+        title="Pengguna & Hak Akses (RBAC)"
+        description="Kelola akun 4 peran (Dosen Admin, Auditor, Maintenance, Pimpinan). Akun dinonaktifkan (is_active = false), bukan dihapus (FR-01)."
         actions={
           <>
             <button className="btn btn-secondary" onClick={() => void load()} disabled={refreshing}>

@@ -207,9 +207,9 @@ export default function SpecsPage() {
   return (
     <>
       <PageHead
-        eyebrow="Administrasi data"
-        title="Master perangkat"
-        description="Katalog kombinasi RAM, penyimpanan, dan CPU opsional beserta asumsi watt standby yang dipakai saat audit."
+        eyebrow="Web Screen 3: Admin Master Data & RBAC Management (UC-03)"
+        title="Master Data Spesifikasi PC & Daya Standby"
+        description="Katalog patokan kombinasi RAM, SSD/Penyimpanan, dan watt standby untuk 6 lab komputer UNKLAB."
         actions={
           <>
             <button className="btn btn-secondary" onClick={() => void load()} disabled={refreshing}>

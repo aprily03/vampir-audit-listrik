@@ -166,9 +166,9 @@ export default function ExecutivePage() {
   return (
     <>
       <PageHead
-        eyebrow="Laporan pimpinan"
-        title="Ringkasan eksekutif"
-        description="Tren tagihan listrik kampus, estimasi energi standby laboratorium, dan indikator emisi."
+        eyebrow="Web Screen 6: Executive Dashboard Pimpinan Kampus (UC-10, UC-11)"
+        title="Ringkasan Eksekutif & Green Campus"
+        description="Analisis komparasi tagihan listrik kampus vs estimasi kebocoran daya vampir 6 laboratorium, emisi karbon, dan unduh laporan resmi PDF."
         actions={
           <>
             <button className="btn btn-secondary" onClick={() => void load()} disabled={refreshing}>

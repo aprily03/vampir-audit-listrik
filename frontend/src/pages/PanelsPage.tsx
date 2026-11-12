@@ -278,13 +278,13 @@ export default function PanelsPage() {
   return (
     <>
       <PageHead
-        eyebrow="Operasional fasilitas"
-        title="Panel listrik & insiden"
-        description="Pantau beban grup stopkontak dan AC, lalu tindak lanjuti laporan insiden laboratorium."
+        eyebrow="Web Screen 5: Facility Maintenance Panel & Live Feed (UC-06, UC-07)"
+        title="Panel Listrik MCB & Live Incident Feed"
+        description="Pantau beban grup stopkontak 10 A (≈2.200 W) & AC 40 A (≈8.800 W), serta tangani insiden tegangan secara real-time (< 3 detik NFR-03)."
         actions={
           <>
             <span className="live-pill">
-              <span className="live-dot" /> Feed tiap {pollSeconds} detik
+              <span className="live-dot" /> Live sync tiap {pollSeconds} detik (NFR-03)
             </span>
             <button className="btn btn-secondary" onClick={() => void loadOverview()} disabled={refreshing}>
               <RefreshCw size={16} className={refreshing ? 'spin' : ''} />

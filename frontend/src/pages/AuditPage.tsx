@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom'
 import {
   AlertTriangle,
   CheckCircle2,
-  ClipboardList,
   LoaderCircle,
   Monitor,
   Pencil,
@@ -12,14 +11,14 @@ import {
   Trash2,
   Wifi,
   WifiOff,
+  Zap,
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import { api, firstError } from '../lib/api'
-import { dateTime, number, relativeTime } from '../lib/format'
+import { number } from '../lib/format'
 import type { AuditLog, ProgressLab, Spec } from '../types'
 import {
   Badge,
-  EmptyState,
   ErrorState,
   FormField,
   Modal,
@@ -52,14 +51,14 @@ function suggestNextPc(current: string, audits: AuditLog[], capacity: number): s
     next += 1
   }
 
-  return next <= capacity ? `PC-${String(next).padStart(2, '0')}` : ''
+  return next <= capacity ? `PC-${String(next).padStart(2, '0')}` : `PC-${String(capacity)}`
 }
 
 export default function AuditPage() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'ADMIN'
   const toast = useToast()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const pcInputRef = useRef<HTMLInputElement>(null)
 
   const [labs, setLabs] = useState<ProgressLab[]>([])
@@ -75,6 +74,7 @@ export default function AuditPage() {
   const [search, setSearch] = useState('')
   const [online, setOnline] = useState(navigator.onLine)
 
+  // Edit modal
   const [editing, setEditing] = useState<AuditLog | null>(null)
   const [editForm, setEditForm] = useState<AuditForm>(emptyForm)
   const [editError, setEditError] = useState('')
@@ -93,25 +93,32 @@ export default function AuditPage() {
     }
   }, [])
 
-  const loadBootstrap = useCallback(async (preferredLabId?: number | null) => {
-    const [progressResponse, specsResponse] = await Promise.all([
-      api.get<{ data: ProgressLab[] }>('/audits/progress'),
-      api.get<{ data: Spec[] }>('/specs'),
-    ])
+  const loadBootstrap = useCallback(
+    async (preferredLabId?: number | null) => {
+      const [progressResponse, specsResponse] = await Promise.all([
+        api.get<{ data: ProgressLab[] }>('/audits/progress'),
+        api.get<{ data: Spec[] }>('/specs'),
+      ])
 
-    setLabs(progressResponse.data)
-    setSpecs(specsResponse.data)
+      setLabs(progressResponse.data)
+      setSpecs(specsResponse.data)
 
-    const queryLab = Number(searchParams.get('lab'))
-    const candidate =
-      preferredLabId ??
-      (Number.isFinite(queryLab) && progressResponse.data.some((lab) => lab.id === queryLab) ? queryLab : null) ??
-      progressResponse.data.find((lab) => lab.not_audited)?.id ??
-      progressResponse.data[0]?.id ??
-      null
+      const queryLab = Number(searchParams.get('lab'))
+      const candidate =
+        preferredLabId ??
+        (Number.isFinite(queryLab) && progressResponse.data.some((lab) => lab.id === queryLab) ? queryLab : null) ??
+        progressResponse.data.find((lab) => lab.not_audited)?.id ??
+        progressResponse.data[0]?.id ??
+        null
 
-    setSelectedLabId((current) => current ?? candidate)
-  }, [searchParams])
+      setSelectedLabId(candidate)
+      // Set default spec if available
+      if (specsResponse.data.length > 0 && !form.master_pc_spec_id) {
+        setForm((prev) => ({ ...prev, master_pc_spec_id: String(specsResponse.data[0].id) }))
+      }
+    },
+    [searchParams, form.master_pc_spec_id],
+  )
 
   const loadAudits = useCallback(async (labId: number, silent = false) => {
     if (!silent) setLoadingAudits(true)
@@ -143,13 +150,13 @@ export default function AuditPage() {
 
   useEffect(() => {
     if (!selectedLabId) return
-    setForm((current) => ({ ...current, pc_number: '' }))
+    const next = suggestNextPc('', audits, selectedLab?.capacity ?? 40)
+    setForm((current) => ({
+      ...current,
+      pc_number: current.pc_number || next,
+    }))
     void loadAudits(selectedLabId).catch((caught) => setError(firstError(caught)))
-  }, [selectedLabId, loadAudits])
-
-  useEffect(() => {
-    if (!online) setFormError('Koneksi internet terputus. Data audit hanya dapat disimpan saat online.')
-  }, [online])
+  }, [selectedLabId, loadAudits, audits, selectedLab?.capacity])
 
   const filteredAudits = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -170,7 +177,12 @@ export default function AuditPage() {
     await loadAudits(selectedLabId, true)
     await loadBootstrap(selectedLabId)
     const next = suggestNextPc(savedPc, audits, selectedLab?.capacity ?? 40)
-    setForm((current) => ({ ...current, pc_number: next, is_faulty: false, fault_note: '' }))
+    setForm((current) => ({
+      ...current,
+      pc_number: next,
+      is_faulty: false,
+      fault_note: '',
+    }))
     window.setTimeout(() => pcInputRef.current?.focus(), 50)
   }
 
@@ -178,6 +190,10 @@ export default function AuditPage() {
     event.preventDefault()
     if (!selectedLabId) {
       setFormError('Pilih laboratorium terlebih dahulu.')
+      return
+    }
+    if (!form.master_pc_spec_id) {
+      setFormError('Pilih kombinasi spesifikasi RAM dan SSD.')
       return
     }
     if (!online) {
@@ -196,7 +212,7 @@ export default function AuditPage() {
         fault_note: form.is_faulty ? form.fault_note.trim() || null : null,
       }
       await api.post('/audits', payload)
-      toast.success(`${payload.pc_number} tersimpan pada ${selectedLab?.name ?? 'lab'}.`)
+      toast.success(`${payload.pc_number} berhasil disimpan di ${selectedLab?.name ?? 'lab'} (≤ 1.5s NFR-01).`)
       await refreshAfterSave(payload.pc_number)
     } catch (caught) {
       setFormError(firstError(caught))
@@ -228,7 +244,7 @@ export default function AuditPage() {
         is_faulty: editForm.is_faulty,
         fault_note: editForm.is_faulty ? editForm.fault_note.trim() || null : null,
       })
-      toast.success('Catatan audit diperbarui.')
+      toast.success('Catatan audit unit diperbarui.')
       setEditing(null)
       if (selectedLabId) await loadAudits(selectedLabId, true)
       await loadBootstrap(selectedLabId)
@@ -243,7 +259,7 @@ export default function AuditPage() {
     if (!window.confirm(`Hapus catatan audit ${audit.pc_number}? Tindakan ini tidak dapat dibatalkan.`)) return
     try {
       await api.delete(`/audits/${audit.id}`)
-      toast.success('Catatan audit dihapus.')
+      toast.success(`Catatan ${audit.pc_number} dihapus.`)
       if (selectedLabId) await loadAudits(selectedLabId, true)
       await loadBootstrap(selectedLabId)
     } catch (caught) {
@@ -251,78 +267,111 @@ export default function AuditPage() {
     }
   }
 
-  if (loading) return <PageLoader label="Memuat data audit…" />
+  function handleSelectLab(id: number) {
+    setSelectedLabId(id)
+    setSearchParams({ lab: String(id) })
+  }
+
+  if (loading) return <PageLoader label="Memuat konsol audit lapangan…" />
   if (error) return <ErrorState message={error} onRetry={() => void loadBootstrap()} />
 
   const selectedSpec = specs.find((spec) => String(spec.id) === form.master_pc_spec_id)
-  const suggested = selectedLab ? suggestNextPc('', audits, selectedLab.capacity) : ''
+  const suggested = selectedLab ? suggestNextPc(form.pc_number, audits, selectedLab.capacity) : ''
 
   return (
     <>
       <PageHead
-        eyebrow="Inventaris & standby"
-        title="Audit PC cepat"
-        description="Pilih lab, masukkan nomor PC, lalu simpan dan lanjut ke unit berikutnya tanpa mengulang pemilihan lab."
+        eyebrow="Web Screen 4: Auditor Fast-Input Console (UC-08, UC-09)"
+        title="Konsol Audit Cepat Lapangan"
+        description="Dirancang untuk kecepatan di smartphone & desktop (NFR-01: simpan ≤ 1,5 detik per PC). Pilih lab, pilih spesifikasi, simpan, dan langsung lanjut."
         actions={
-          <span className={`connection-pill ${online ? 'online' : 'offline'}`}>
-            {online ? <Wifi size={14} /> : <WifiOff size={14} />}
-            {online ? 'Online — siap menyimpan' : 'Offline — simpan dinonaktifkan'}
-          </span>
+          <div className="head-actions-row">
+            <span className={`connection-pill ${online ? 'online' : 'offline'}`}>
+              {online ? <Wifi size={14} /> : <WifiOff size={14} />}
+              {online ? 'Online (Auto-Sync)' : 'Offline (Simpan Nonaktif)'}
+            </span>
+          </div>
         }
       />
 
+      {/* Lab Selector Horizontal Carousel */}
       <section className="lab-picker card">
         <div className="card-head compact">
           <div>
-            <h2 className="card-title">Pilih laboratorium</h2>
-            <p className="card-sub">Progres dihitung terhadap kapasitas PC target dari Admin.</p>
+            <h2 className="card-title">Pilih Laboratorium Komputer</h2>
+            <p className="card-sub">Cakupan 6 laboratorium UNKLAB (total target 210–240 PC)</p>
           </div>
-          <Badge tone="info">{labs.length} lab aktif</Badge>
+          <Badge tone="info">6 Lab Komputer</Badge>
         </div>
+
         <div className="lab-picker-grid">
-          {labs.map((lab) => (
-            <button
-              key={lab.id}
-              type="button"
-              className={`lab-pick ${lab.id === selectedLabId ? 'active' : ''}`}
-              onClick={() => setSelectedLabId(lab.id)}
-            >
-              <div className="lab-pick-top">
-                <span>{lab.name}</span>
-                <strong>{number(lab.progress_percent, 0)}%</strong>
-              </div>
-              <ProgressBar value={lab.progress_percent} height={5} tone={lab.not_audited ? 'warning' : 'accent'} />
-              <div className="lab-pick-foot">
-                <span>
-                  {lab.audited_count}/{lab.capacity} PC
-                </span>
-                {lab.not_audited ? <Badge tone="neutral">Belum diaudit</Badge> : lab.faulty_count > 0 ? <Badge tone="danger">{lab.faulty_count} rusak</Badge> : <span className="muted">Terdata</span>}
-              </div>
-            </button>
-          ))}
+          {labs.map((lab) => {
+            const isSelected = lab.id === selectedLabId
+            const isFinished = lab.audited_count >= lab.capacity && lab.capacity > 0
+            return (
+              <button
+                key={lab.id}
+                type="button"
+                className={`lab-pick ${isSelected ? 'active' : ''}`}
+                onClick={() => handleSelectLab(lab.id)}
+              >
+                <div className="lab-pick-top">
+                  <span className="lab-pick-name">{lab.name}</span>
+                  <strong>{number(lab.progress_percent, 0)}%</strong>
+                </div>
+
+                <ProgressBar
+                  value={lab.progress_percent}
+                  height={6}
+                  tone={lab.not_audited ? 'warning' : isFinished ? 'success' : 'accent'}
+                />
+
+                <div className="lab-pick-foot">
+                  <span>
+                    {lab.audited_count} / {lab.capacity} PC
+                  </span>
+                  {lab.not_audited ? (
+                    <Badge tone="neutral">Belum Diaudit</Badge>
+                  ) : lab.faulty_count > 0 ? (
+                    <Badge tone="danger">{lab.faulty_count} Rusak</Badge>
+                  ) : isFinished ? (
+                    <Badge tone="success">Lengkap</Badge>
+                  ) : (
+                    <span className="muted">Sedang Audit</span>
+                  )}
+                </div>
+              </button>
+            )
+          })}
         </div>
       </section>
 
+      {/* Main Fast-Input & List Layout */}
       <div className="audit-layout">
+        {/* Fast-Input Card */}
         <section className="card audit-form-card">
           <div className="card-head">
             <div>
-              <h2 className="card-title">Input unit · {selectedLab?.name ?? 'Pilih lab'}</h2>
+              <div className="flex-center-gap">
+                <Badge tone="accent">Input Cepat</Badge>
+                <h2 className="card-title">{selectedLab?.name ?? 'Pilih Lab'}</h2>
+              </div>
               <p className="card-sub">
                 {selectedLab
-                  ? `${selectedLab.audited_count} dari ${selectedLab.capacity} PC sudah diaudit · ${remaining} tersisa`
-                  : 'Belum ada laboratorium yang dipilih.'}
+                  ? `${selectedLab.audited_count} dari ${selectedLab.capacity} PC terdata · ${remaining} unit tersisa`
+                  : 'Pilih lab di atas untuk memulai.'}
               </p>
             </div>
-            <div className="progress-ring-small" aria-label={`Progres ${number(progress, 1)} persen`}>
+
+            <div className="progress-ring-small" aria-label={`Progres ${number(progress, 0)}%`}>
               <svg viewBox="0 0 44 44">
-                <circle cx="22" cy="22" r="18" fill="none" stroke="#edf1ee" strokeWidth="4" />
+                <circle cx="22" cy="22" r="18" fill="none" stroke="#e2e8f0" strokeWidth="4" />
                 <circle
                   cx="22"
                   cy="22"
                   r="18"
                   fill="none"
-                  stroke="#3f725c"
+                  stroke="#2d6a4f"
                   strokeWidth="4"
                   strokeLinecap="round"
                   strokeDasharray={`${(Math.min(progress, 100) / 100) * 113.1} 113.1`}
@@ -335,137 +384,204 @@ export default function AuditPage() {
 
           {!online && (
             <div className="inline-warning">
-              <WifiOff size={15} /> Koneksi terputus. Audit baru tidak dapat disimpan sampai koneksi kembali.
+              <WifiOff size={15} /> Koneksi internet terputus. Data audit hanya dapat disimpan saat tersambung.
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="audit-form">
-            <FormField label="Nomor PC" htmlFor="pcNumber" hint={suggested ? `Saran berikutnya: ${suggested}` : undefined}>
+            {/* PC Number Input */}
+            <FormField
+              label="Nomor Unit PC (Auto-Increment)"
+              htmlFor="pcNumber"
+              hint={suggested ? `Saran urutan berikutnya: ${suggested}` : 'Masukkan nomor unit PC'}
+            >
               <div className="input-icon-wrap">
-                <Monitor size={16} />
+                <Monitor size={18} className="text-muted" />
                 <input
                   id="pcNumber"
                   ref={pcInputRef}
-                  className="input"
+                  className="input input-lg"
                   value={form.pc_number}
                   onChange={(event) => setForm({ ...form, pc_number: event.target.value })}
-                  placeholder={suggested || 'Contoh: PC-19'}
+                  placeholder={suggested || 'Contoh: PC-01'}
                   autoComplete="off"
                   required
                 />
+                {suggested && form.pc_number !== suggested && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setForm({ ...form, pc_number: suggested })}
+                  >
+                    Gunakan {suggested}
+                  </button>
+                )}
               </div>
             </FormField>
 
-            <FormField
-              label="Spesifikasi perangkat"
-              htmlFor="pcSpec"
-              hint={selectedSpec ? `Watt standby: ${number(selectedSpec.standby_watt, 2)} W` : 'Pilih kombinasi RAM, penyimpanan, dan CPU.'}
-            >
-              <select
-                id="pcSpec"
-                className="input"
-                value={form.master_pc_spec_id}
-                onChange={(event) => setForm({ ...form, master_pc_spec_id: event.target.value })}
-                required
-              >
-                <option value="">Pilih spesifikasi…</option>
-                {specs.map((spec) => (
-                  <option key={spec.id} value={spec.id}>
-                    {spec.label} · {number(spec.standby_watt, 2)} W standby
-                  </option>
-                ))}
-              </select>
-            </FormField>
+            {/* Quick Spec Presets */}
+            <div className="field">
+              <label className="field-label">Pilih Spesifikasi Master (RAM &amp; SSD)</label>
+              <div className="spec-chips-row">
+                {specs.map((spec) => {
+                  const isSelected = String(spec.id) === form.master_pc_spec_id
+                  return (
+                    <button
+                      key={spec.id}
+                      type="button"
+                      className={`spec-chip ${isSelected ? 'selected' : ''}`}
+                      onClick={() => setForm({ ...form, master_pc_spec_id: String(spec.id) })}
+                    >
+                      <div className="spec-chip-title">{spec.label}</div>
+                      <div className="spec-chip-watt">
+                        <Zap size={12} /> {number(spec.standby_watt, 2)} W Standby
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
 
+              {/* Standard Dropdown alternative */}
+              <div className="spec-select-fallback">
+                <select
+                  id="pcSpec"
+                  className="input"
+                  value={form.master_pc_spec_id}
+                  onChange={(event) => setForm({ ...form, master_pc_spec_id: event.target.value })}
+                  required
+                >
+                  <option value="">Atau pilih spesifikasi dari dropdown lengkap…</option>
+                  {specs.map((spec) => (
+                    <option key={spec.id} value={spec.id}>
+                      {spec.label} · Daya Standby: {number(spec.standby_watt, 2)} W
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Standby Watt Preview Badge */}
+            {selectedSpec && (
+              <div className="spec-preview-banner">
+                <Zap size={16} className="text-accent" />
+                <span>
+                  Standby Snapshot: <strong>{number(selectedSpec.standby_watt, 2)} Watt</strong> (Estimasi beban vampir terbuang saat shutdown)
+                </span>
+              </div>
+            )}
+
+            {/* Faulty Unit Toggle (UC-09) */}
             <label className={`fault-toggle ${form.is_faulty ? 'checked' : ''}`}>
               <input
                 type="checkbox"
                 checked={form.is_faulty}
                 onChange={(event) => setForm({ ...form, is_faulty: event.target.checked })}
               />
-              <span className="fault-toggle-box">{form.is_faulty && <CheckCircle2 size={14} />}</span>
-              <span>
-                <strong>Tandai unit bermasalah</strong>
-                <small>Audit tetap dapat dilanjutkan ke unit berikutnya.</small>
+              <span className="fault-toggle-box">
+                {form.is_faulty && <CheckCircle2 size={16} />}
               </span>
-              <AlertTriangle size={17} className="fault-toggle-icon" />
+              <span className="fault-toggle-copy">
+                <strong>Unit Mengalami Gangguan / Rusak (UC-09)</strong>
+                <small>Centang jika PC tidak mau menyala, blue screen, atau komponen rusak.</small>
+              </span>
+              <AlertTriangle size={20} className="fault-toggle-icon" />
             </label>
 
             {form.is_faulty && (
-              <FormField label="Catatan gangguan" htmlFor="faultNote" hint="Opsional, misalnya tidak menyala stabil atau layar bermasalah.">
+              <FormField
+                label="Catatan Gangguan Unit PC"
+                htmlFor="faultNote"
+                hint="Jelaskan kondisi kerusakan unit (misal: power supply mati total, RAM error, layar tidak tampil)."
+              >
+                <div className="quick-tags-row">
+                  {['Mati total (tidak ada daya)', 'RAM / Blue screen', 'SSD error / Corrupt', 'Kabel power longgar'].map(
+                    (tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        className="quick-tag-chip"
+                        onClick={() =>
+                          setForm((prev) => ({
+                            ...prev,
+                            fault_note: prev.fault_note ? `${prev.fault_note}, ${tag}` : tag,
+                          }))
+                        }
+                      >
+                        + {tag}
+                      </button>
+                    ),
+                  )}
+                </div>
                 <textarea
                   id="faultNote"
                   className="input textarea"
-                  rows={3}
+                  rows={2}
+                  placeholder="Ketik catatan kerusakan tambahan di sini..."
                   value={form.fault_note}
                   onChange={(event) => setForm({ ...form, fault_note: event.target.value })}
-                  placeholder="Deskripsi singkat kondisi unit…"
                 />
               </FormField>
             )}
 
             {formError && (
-              <div className="inline-error" role="alert">
-                {formError}
+              <div className="login-error" role="alert">
+                <AlertTriangle size={16} />
+                <span>{formError}</span>
               </div>
             )}
 
-            <button className="btn btn-primary btn-block" type="submit" disabled={saving || !online || !selectedLab}>
-              {saving ? <LoaderCircle size={17} className="spin" /> : <Save size={17} />}
-              {saving ? 'Menyimpan…' : 'Simpan & Lanjut PC Berikutnya'}
+            {/* Primary Action Button */}
+            <button
+              className="btn btn-primary btn-save-fast"
+              type="submit"
+              disabled={saving || !online}
+            >
+              {saving ? <LoaderCircle className="spin" size={19} /> : <Save size={19} />}
+              <span>{saving ? 'Menyimpan dalam ≤ 1,5 detik…' : 'Simpan & Lanjut PC Berikutnya (Enter)'}</span>
             </button>
-
-            <p className="form-footnote">
-              Data langsung disimpan ke server kampus. Pemilihan lab tetap aktif setelah penyimpanan.
-            </p>
           </form>
         </section>
 
+        {/* Audit Log Table Section */}
         <section className="card audit-list-card">
           <div className="card-head">
             <div>
-              <h2 className="card-title">Catatan audit · {selectedLab?.name ?? '—'}</h2>
-              <p className="card-sub">Audit terbaru pada lab ini. Admin dapat mengoreksi entri.</p>
+              <h2 className="card-title">Daftar Unit PC Terdata ({audits.length})</h2>
+              <p className="card-sub">{selectedLab?.name ?? 'Laboratorium'}</p>
             </div>
-            <Badge tone="neutral">{number(audits.length)} entri</Badge>
-          </div>
 
-          <div className="toolbar">
-            <div className="input-icon-wrap toolbar-search">
+            <div className="search-wrap">
               <Search size={15} />
               <input
                 className="input input-sm"
-                placeholder="Cari nomor PC, spesifikasi, atau auditor…"
+                placeholder="Cari nomor PC atau spek..."
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            {isAdmin && <span className="toolbar-note">Mode admin: koreksi & hapus tersedia.</span>}
           </div>
 
           {loadingAudits ? (
-            <PageLoader label="Memuat catatan audit…" />
+            <div className="empty-inline">
+              <LoaderCircle size={18} className="spin" /> Memuat data unit...
+            </div>
           ) : filteredAudits.length === 0 ? (
-            <EmptyState
-              icon={<ClipboardList size={22} />}
-              title={audits.length === 0 ? 'Belum ada audit di lab ini' : 'Tidak ada hasil pencarian'}
-              description={
-                audits.length === 0
-                  ? 'Mulai dari form di samping. Entri pertama akan muncul di sini.'
-                  : 'Coba kata kunci lain atau kosongkan pencarian.'
-              }
-            />
+            <div className="empty-inline">
+              {audits.length === 0
+                ? 'Belum ada PC yang diaudit di lab ini. Gunakan formulir di samping untuk memulai.'
+                : 'Tidak ada unit PC yang cocok dengan pencarian.'}
+            </div>
           ) : (
-            <div className="table-wrap audit-table-wrap">
+            <div className="table-wrap">
               <table className="data-table">
                 <thead>
                   <tr>
                     <th>PC</th>
                     <th>Spesifikasi</th>
+                    <th>Standby</th>
                     <th>Auditor</th>
-                    <th>Waktu</th>
                     <th>Kondisi</th>
-                    {isAdmin && <th aria-label="Aksi" />}
+                    <th className="text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -473,29 +589,46 @@ export default function AuditPage() {
                     <tr key={audit.id}>
                       <td className="cell-strong">{audit.pc_number}</td>
                       <td>
-                        <div>{audit.spec.label}</div>
-                        <div className="cell-muted">{number(audit.spec.standby_watt, 2)} W standby</div>
-                      </td>
-                      <td>{audit.auditor?.name ?? '—'}</td>
-                      <td>
-                        <div>{dateTime(audit.audited_at)}</div>
-                        <div className="cell-muted">{relativeTime(audit.audited_at)}</div>
+                        <div className="table-spec-label">{audit.spec.label}</div>
                       </td>
                       <td>
-                        {audit.is_faulty ? <Badge tone="danger">Bermasalah</Badge> : <Badge tone="success" dot>Normal</Badge>}
+                        <span className="watt-pill">{number(audit.spec.standby_watt, 2)} W</span>
                       </td>
-                      {isAdmin && (
-                        <td>
-                          <div className="row-actions">
-                            <button className="icon-btn icon-btn-sm" onClick={() => openEdit(audit)} aria-label={`Koreksi ${audit.pc_number}`}>
-                              <Pencil size={14} />
-                            </button>
-                            <button className="icon-btn icon-btn-sm danger" onClick={() => void handleDelete(audit)} aria-label={`Hapus ${audit.pc_number}`}>
-                              <Trash2 size={14} />
-                            </button>
+                      <td className="cell-muted">{audit.auditor?.name ?? 'Auditor'}</td>
+                      <td>
+                        {audit.is_faulty ? (
+                          <div className="fault-indicator">
+                            <Badge tone="danger">Rusak</Badge>
+                            {audit.fault_note && <small title={audit.fault_note}>{audit.fault_note}</small>}
                           </div>
-                        </td>
-                      )}
+                        ) : (
+                          <Badge tone="success" dot>
+                            Normal
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="text-right">
+                        <div className="action-buttons-row">
+                          <button
+                            type="button"
+                            className="btn-icon-subtle"
+                            onClick={() => openEdit(audit)}
+                            title="Edit data PC"
+                          >
+                            <Pencil size={15} />
+                          </button>
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              className="btn-icon-subtle text-danger"
+                              onClick={() => void handleDelete(audit)}
+                              title="Hapus unit"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -505,72 +638,79 @@ export default function AuditPage() {
         </section>
       </div>
 
-      <Modal
-        open={editing !== null}
-        title={`Koreksi ${editing?.pc_number ?? ''}`}
-        subtitle="Perubahan dicatat sebagai koreksi Admin pada entri audit yang sudah tersimpan."
-        onClose={() => setEditing(null)}
-        footer={
-          <>
-            <button className="btn btn-ghost" type="button" onClick={() => setEditing(null)}>
-              Batal
-            </button>
-            <button className="btn btn-primary" type="submit" form="editAuditForm" disabled={savingEdit}>
-              {savingEdit ? <LoaderCircle size={16} className="spin" /> : <Save size={16} />}
-              Simpan koreksi
-            </button>
-          </>
-        }
-      >
-        <form id="editAuditForm" className="form-stack" onSubmit={handleEditSubmit}>
+      {/* Edit PC Modal */}
+      <Modal open={editing !== null} onClose={() => setEditing(null)} title={`Koreksi Data ${editing?.pc_number ?? 'PC'}`}>
+        <form onSubmit={handleEditSubmit} className="modal-form">
           <FormField label="Nomor PC" htmlFor="editPcNumber">
             <input
               id="editPcNumber"
               className="input"
               value={editForm.pc_number}
-              onChange={(event) => setEditForm({ ...editForm, pc_number: event.target.value })}
+              onChange={(e) => setEditForm({ ...editForm, pc_number: e.target.value })}
               required
             />
           </FormField>
-          <FormField label="Spesifikasi" htmlFor="editPcSpec">
+
+          <FormField label="Spesifikasi Master" htmlFor="editPcSpec">
             <select
               id="editPcSpec"
               className="input"
               value={editForm.master_pc_spec_id}
-              onChange={(event) => setEditForm({ ...editForm, master_pc_spec_id: event.target.value })}
+              onChange={(e) => setEditForm({ ...editForm, master_pc_spec_id: e.target.value })}
               required
             >
               {specs.map((spec) => (
                 <option key={spec.id} value={spec.id}>
-                  {spec.label} · {number(spec.standby_watt, 2)} W
+                  {spec.label} · {number(spec.standby_watt, 2)} W Standby
                 </option>
               ))}
             </select>
           </FormField>
+
           <label className={`fault-toggle ${editForm.is_faulty ? 'checked' : ''}`}>
             <input
               type="checkbox"
               checked={editForm.is_faulty}
-              onChange={(event) => setEditForm({ ...editForm, is_faulty: event.target.checked })}
+              onChange={(e) => setEditForm({ ...editForm, is_faulty: e.target.checked })}
             />
-            <span className="fault-toggle-box">{editForm.is_faulty && <CheckCircle2 size={14} />}</span>
+            <span className="fault-toggle-box">{editForm.is_faulty && <CheckCircle2 size={16} />}</span>
             <span>
-              <strong>Unit bermasalah</strong>
-              <small>Status kondisi unit pada catatan ini.</small>
+              <strong>Unit Mengalami Gangguan / Rusak</strong>
             </span>
           </label>
+
           {editForm.is_faulty && (
-            <FormField label="Catatan gangguan" htmlFor="editFaultNote">
+            <FormField label="Catatan Gangguan" htmlFor="editFaultNote">
               <textarea
                 id="editFaultNote"
                 className="input textarea"
                 rows={3}
                 value={editForm.fault_note}
-                onChange={(event) => setEditForm({ ...editForm, fault_note: event.target.value })}
+                onChange={(e) => setEditForm({ ...editForm, fault_note: e.target.value })}
               />
             </FormField>
           )}
-          {editError && <div className="inline-error">{editError}</div>}
+
+          {editError && (
+            <div className="login-error" role="alert">
+              <span>{editError}</span>
+            </div>
+          )}
+
+          <div className="modal-actions">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setEditing(null)}
+              disabled={savingEdit}
+            >
+              Batal
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={savingEdit}>
+              {savingEdit ? <LoaderCircle className="spin" size={16} /> : <Save size={16} />}
+              <span>{savingEdit ? 'Menyimpan…' : 'Simpan Perubahan'}</span>
+            </button>
+          </div>
         </form>
       </Modal>
     </>
